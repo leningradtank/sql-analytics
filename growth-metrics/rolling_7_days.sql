@@ -1,11 +1,11 @@
 WITH first_funded AS (
     
     SELECT      A.id AS account_id, MIN(B.created_at) AS funding_date
-    FROM        accounts A
+    FROM        wallets A
     JOIN        activity B
         ON      B.account_number = A.account_number
     WHERE       account IN ('TypeA', '')
-    AND         B.action_like IN ('CSD', 'CSR')
+    AND         B.action_like IN ('deposit', 'withdraw')
     AND         B.status = 'executed'
     AND         A.created_at >= '2022-01-01'
     GROUP BY    A.id
@@ -21,7 +21,7 @@ WITH first_funded AS (
 ), first_order AS (
 
     SELECT      A.id AS account_id, MIN(B.created_at) AS order_date
-    FROM        accounts A
+    FROM        wallets A
     JOIN        orders B
         ON      B.account = A.account_number
     WHERE       account IN ('TypeA', '')
@@ -46,9 +46,9 @@ WITH first_funded AS (
 ), n AS (
     
     SELECT      days.day,
-                COUNT(DISTINCT account_id) AS n_accounts_deposit_after_app,
-                COUNT(DISTINCT CASE WHEN funding_date::date >= approved_date::date AND funding_date::date < approved_date::date + INTERVAL '3 day' THEN account_id END) AS n_accounts_deposit_3_days_after_app,
-                COUNT(DISTINCT CASE WHEN funding_date::date >= approved_date::date AND funding_date::date < approved_date::date + INTERVAL '3 day' AND order_date IS NOT NULL THEN account_id END) AS n_accounts_trade_after_dep_3_days_after_app
+                COUNT(DISTINCT account_id) AS n_wallets_deposit_after_app,
+                COUNT(DISTINCT CASE WHEN funding_date::date >= approved_date::date AND funding_date::date < approved_date::date + INTERVAL '3 day' THEN account_id END) AS n_wallets_deposit_3_days_after_app,
+                COUNT(DISTINCT CASE WHEN funding_date::date >= approved_date::date AND funding_date::date < approved_date::date + INTERVAL '3 day' AND order_date IS NOT NULL THEN account_id END) AS n_wallets_trade_after_dep_3_days_after_app
     FROM        days
     LEFT JOIN   time_difference ON days.day = time_difference.approved_date::date
     GROUP BY    days.day
@@ -56,7 +56,7 @@ WITH first_funded AS (
 )
 
 SELECT  day,
-        SUM(n_accounts_deposit_after_app) OVER (ORDER BY day ROWS BETWEEN 6 PRECEDING AND CURRENT ROW) AS "Accounts that Deposit on/after Approval",
-        1.0*SUM(n_accounts_deposit_3_days_after_app) OVER (ORDER BY day ROWS BETWEEN 6 PRECEDING AND CURRENT ROW) / SUM(n_accounts_deposit_after_app) OVER (ORDER BY day ROWS BETWEEN 6 PRECEDING AND CURRENT ROW) AS "% of Users that Deposit w/in 3 Days",
-        1.0*SUM(n_accounts_trade_after_dep_3_days_after_app) OVER (ORDER BY day ROWS BETWEEN 6 PRECEDING AND CURRENT ROW) / SUM(n_accounts_deposit_3_days_after_app) OVER (ORDER BY day ROWS BETWEEN 6 PRECEDING AND CURRENT ROW) AS "% of Users that Traded after Deposit made w/in 3 Days"
+        SUM(n_wallets_deposit_after_app) OVER (ORDER BY day ROWS BETWEEN 6 PRECEDING AND CURRENT ROW) AS "wallets that Deposit on/after Approval",
+        1.0*SUM(n_wallets_deposit_3_days_after_app) OVER (ORDER BY day ROWS BETWEEN 6 PRECEDING AND CURRENT ROW) / SUM(n_wallets_deposit_after_app) OVER (ORDER BY day ROWS BETWEEN 6 PRECEDING AND CURRENT ROW) AS "% of Users that Deposit w/in 3 Days",
+        1.0*SUM(n_wallets_trade_after_dep_3_days_after_app) OVER (ORDER BY day ROWS BETWEEN 6 PRECEDING AND CURRENT ROW) / SUM(n_wallets_deposit_3_days_after_app) OVER (ORDER BY day ROWS BETWEEN 6 PRECEDING AND CURRENT ROW) AS "% of Users that Traded after Deposit made w/in 3 Days"
 FROM    n

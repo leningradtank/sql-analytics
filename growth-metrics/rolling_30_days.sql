@@ -8,15 +8,15 @@ WHERE role IN ('superuser', 'developer')
 
 correspondents as (
 
-SELECT      DISTINCT dt AS date_cd, correspondent, user_id
+SELECT      DISTINCT dt AS date, correspondent, user_id
 FROM        bi_reports.access_type_account
 LEFT JOIN   database_a on database_a.correspondent = access_type_account.correspondent
             
 ), dates as (
 
 select distinct
-CAST(date_cd AS date) - interval '30' day as start_dt,
-CAST(date_cd AS date) as end_dt
+CAST(date AS date) - interval '30' day as start_dt,
+CAST(date AS date) as end_dt
 from correspondents
 
 )
@@ -32,8 +32,8 @@ FROM    dates A
 
 cross join correspondents B
 
-where B.date_cd > A.start_dt
-and B.date_cd <= A.end_dt
+where B.date > A.start_dt
+and B.date <= A.end_dt
 
 group by
 end_dt,
